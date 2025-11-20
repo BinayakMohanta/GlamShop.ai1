@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlamShop.ai - Smart Stylist</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+    </style>
+</head>
+<body class="bg-white text-gray-900 font-sans selection:bg-purple-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => { lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+
+        // --- CONFIGURATION ---
+        const QUESTIONS = [
+            { id: 1, question: "First things first, who are we styling today?", options: [{ label: "Womenswear", value: "women" }, { label: "Menswear", value: "men" }, { label: "Everyone / Unisex", value: "unisex" }] },
+            { id: 2, question: "How would you describe your current vibe?", options: [{ label: "Minimalist & Clean", value: "minimalist" }, { label: "Streetwear & Hype", value: "streetwear" }, { label: "Elegant & Formal", value: "formal" }, { label: "Boho & Relaxed", value: "boho" }] },
+            { id: 3, question: "Pick a color palette that speaks to you.", options: [{ label: "Monochrome & Neutrals", value: "neutral" }, { label: "Bold & Vibrant", value: "vibrant" }, { label: "Dark & Moody", value: "dark" }, { label: "Soft Pastels", value: "pastel" }] },
+            { id: 4, question: "What's the occasion?", options: [{ label: "Everyday Daily Driver", value: "daily" }, { label: "Date Night / Party", value: "party" }, { label: "Office / Professional", value: "work" }, { label: "Vacation Mode", value: "vacation" }] }
+        ];
+
+        // UPDATED DATABASE with 'vibe', 'colorType', and 'occasion' tags for the algorithm
+        const PRODUCT_DATABASE = [
+            { id: 101, name: "Oversized Structured Blazer", price: "₹8,999", category: "women", vibe: "formal", colorType: "neutral", occasion: "work", image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=800&q=80" },
+            { id: 102, name: "Essential Heavyweight Tee", price: "₹1,499", category: "unisex", vibe: "minimalist", colorType: "neutral", occasion: "daily", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80" },
+            { id: 103, name: "Urban Cargo Tech Pants", price: "₹4,599", category: "men", vibe: "streetwear", colorType: "dark", occasion: "daily", image: "https://images.unsplash.com/photo-1559582798-678dfc71ccd8?auto=format&fit=crop&w=800&q=80" },
+            { id: 104, name: "Silk Slip Dress", price: "₹12,500", category: "women", vibe: "party", colorType: "pastel", occasion: "party", image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80" },
+            { id: 105, name: "Relaxed Linen Shirt", price: "₹3,299", category: "men", vibe: "boho", colorType: "neutral", occasion: "vacation", image: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=800&q=80" },
+            { id: 106, name: "Chunky Dad Sneakers", price: "₹7,999", category: "unisex", vibe: "streetwear", colorType: "vibrant", occasion: "daily", image: "https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=800&q=80" },
+            { id: 107, name: "Cashmere Turtle Neck", price: "₹15,999", category: "women", vibe: "minimalist", colorType: "neutral", occasion: "work", image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=800&q=80" },
+            { id: 108, name: "Classic Leather Loafers", price: "₹9,499", category: "men", vibe: "formal", colorType: "dark", occasion: "work", image: "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?auto=format&fit=crop&w=800&q=80" },
+            { id: 109, name: "Vintage Denim Jacket", price: "₹5,499", category: "unisex", vibe: "streetwear", colorType: "neutral", occasion: "daily", image: "https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?auto=format&fit=crop&w=800&q=80" },
+            { id: 110, name: "Pleated Midi Skirt", price: "₹3,899", category: "women", vibe: "formal", colorType: "pastel", occasion: "work", image: "https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=800&q=80" },
+            { id: 111, name: "Oxford Button Down", price: "₹2,499", category: "men", vibe: "formal", colorType: "neutral", occasion: "work", image: "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=800&q=80" },
+            { id: 112, name: "Bohemian Maxi Dress", price: "₹6,500", category: "women", vibe: "boho", colorType: "vibrant", occasion: "vacation", image: "https://images.unsplash.com/photo-1605763240004-7e93b172d754?auto=format&fit=crop&w=800&q=80" },
+            { id: 113, name: "Graphic Print Hoodie", price: "₹4,200", category: "unisex", vibe: "streetwear", colorType: "dark", occasion: "daily", image: "https://images.unsplash.com/photo-1556906781-9a412961c28c?auto=format&fit=crop&w=800&q=80" },
+            { id: 114, name: "Tailored Chino Shorts", price: "₹2,199", category: "men", vibe: "minimalist", colorType: "neutral", occasion: "vacation", image: "https://images.unsplash.com/photo-1591195853828-11db59a44f6b?auto=format&fit=crop&w=800&q=80" },
+            { id: 115, name: "Statement Gold Earrings", price: "₹1,899", category: "women", vibe: "party", colorType: "vibrant", occasion: "party", image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80" },
+            { id: 116, name: "Canvas Tote Bag", price: "₹999", category: "unisex", vibe: "minimalist", colorType: "neutral", occasion: "daily", image: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80" },
+            { id: 117, name: "Chelsea Boots", price: "₹6,999", category: "men", vibe: "formal", colorType: "dark", occasion: "party", image: "https://images.unsplash.com/photo-1638609348712-44203e341d40?auto=format&fit=crop&w=800&q=80" },
+            { id: 118, name: "Wide Leg Trousers", price: "₹4,999", category: "women", vibe: "minimalist", colorType: "neutral", occasion: "work", image: "https://images.unsplash.com/photo-1602573991155-21f0143bb45c?auto=format&fit=crop&w=800&q=80" },
+            { id: 119, name: "Cropped Puffer Jacket", price: "₹5,500", category: "women", vibe: "streetwear", colorType: "vibrant", occasion: "daily", image: "https://images.unsplash.com/photo-1545594861-3643d35a96a2?auto=format&fit=crop&w=800&q=80" },
+            { id: 120, name: "Leather Weekender Bag", price: "₹18,000", category: "unisex", vibe: "boho", colorType: "dark", occasion: "vacation", image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80" },
+            { id: 121, name: "Neon Windbreaker", price: "₹3,400", category: "unisex", vibe: "streetwear", colorType: "vibrant", occasion: "daily", image: "https://images.unsplash.com/photo-1520975915032-7a971f343695?auto=format&fit=crop&w=800&q=80" },
+            { id: 122, name: "Velvet Evening Jacket", price: "₹14,000", category: "men", vibe: "party", colorType: "dark", occasion: "party", image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80" },
+            { id: 123, name: "Summer Straw Hat", price: "₹1,200", category: "unisex", vibe: "boho", colorType: "neutral", occasion: "vacation", image: "https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=800&q=80" },
+            { id: 124, name: "Satin Wrap Top", price: "₹3,100", category: "women", vibe: "party", colorType: "pastel", occasion: "party", image: "https://images.unsplash.com/photo-1604176354204-9268737828e4?auto=format&fit=crop&w=800&q=80" }
+        ];
+
+        // --- COMPONENTS ---
+
+        const Header = ({ onRestart }) => {
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            return (
+                <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                        <div className="flex items-center gap-2 cursor-pointer group" onClick={onRestart}>
+                            <div className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-lg group-hover:rotate-12 transition-transform">
+                                <Icon name="sparkles" size={18} />
+                            </div>
+                            <span className="text-xl font-bold tracking-tighter font-serif">GlamShop.ai</span>
+                        </div>
+                        <nav className="hidden md:flex gap-8 text-sm font-medium text-gray-600">
+                            <a href="#" className="hover:text-black transition-colors">New Arrivals</a>
+                            <a href="#" className="hover:text-black transition-colors">Trending</a>
+                            <a href="#" className="hover:text-black transition-colors">About the AI</a>
+                        </nav>
+                        <div className="flex items-center gap-4">
+                            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
+                                <Icon name="shopping-bag" size={20} />
+                                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            </button>
+                            <button className="md:hidden p-2 hover:bg-gray-100 rounded-full" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                                {isMenuOpen ? <Icon name="x" size={20} /> : <Icon name="menu" size={20} />}
+                            </button>
+                        </div>
+                    </div>
+                    {isMenuOpen && (
+                        <div className="md:hidden absolute top-16 left-0 w-full bg-white border-b border-gray-100 p-4 flex flex-col gap-4 shadow-lg animate-in slide-in-from-top-5">
+                            <a href="#" className="text-gray-600 font-medium">New Arrivals</a>
+                            <a href="#" className="text-gray-600 font-medium">Trending</a>
+                            <a href="#" className="text-gray-600 font-medium">About the AI</a>
+                        </div>
+                    )}
+                </header>
+            );
+        };
+
+        const Hero = ({ onStart }) => (
+            <div className="min-h-[80vh] flex flex-col items-center justify-center text-center px-4 relative overflow-hidden">
+                <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+                <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+                <div className="absolute bottom-[-20%] left-[20%] w-[500px] h-[500px] bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+                <div className="relative z-10 max-w-2xl mx-auto space-y-8">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 border border-black/10 text-xs font-semibold uppercase tracking-wider">
+                        <Icon name="cpu" size={14} />
+                        <span>Powered by Fashion Intelligence 1.0</span>
+                    </div>
+                    <h1 className="text-5xl md:text-7xl font-bold tracking-tight font-serif text-gray-900 leading-[1.1]">
+                        Stop guessing. <br/>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">Let AI dress you.</span>
+                    </h1>
+                    <p className="text-lg md:text-xl text-gray-500 max-w-lg mx-auto leading-relaxed">
+                        Our advanced algorithm analyzes 50+ data points to curate a wardrobe that matches your soul, not just your body.
+                    </p>
+                    <button onClick={onStart} className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 text-lg font-semibold text-white bg-black rounded-full overflow-hidden transition-all hover:scale-105 hover:shadow-2xl">
+                        <span className="relative z-10 flex items-center gap-2">
+                            Find My Style <Icon name="arrow-right" size={20} className="group-hover:translate-x-1 transition-transform"/>
+                        </span>
+                        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    </button>
+                </div>
+            </div>
+        );
+
+        const Quiz = ({ onComplete }) => {
+            const [currentStep, setCurrentStep] = useState(0);
+            const [answers, setAnswers] = useState({});
+
+            const handleAnswer = (value) => {
+                const newAnswers = { ...answers, [QUESTIONS[currentStep].id]: value };
+                setAnswers(newAnswers);
+                if (currentStep < QUESTIONS.length - 1) {
+                    setTimeout(() => setCurrentStep(prev => prev + 1), 250);
+                } else {
+                    onComplete(newAnswers);
+                }
+            };
+
+            const question = QUESTIONS[currentStep];
+            const progress = ((currentStep + 1) / QUESTIONS.length) * 100;
+
+            return (
+                <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 max-w-3xl mx-auto w-full">
+                    <div className="w-full mb-12">
+                        <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                            <span>Step {currentStep + 1} of {QUESTIONS.length}</span>
+                            <span>{Math.round(progress)}% Profiled</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-black transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
+                        </div>
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 font-serif animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {question.question}
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                        {question.options.map((option, idx) => (
+                            <button key={idx} onClick={() => handleAnswer(option.value)} className="p-6 border-2 border-gray-100 rounded-2xl text-left hover:border-black hover:bg-gray-50 transition-all duration-200 group animate-in fade-in slide-in-from-bottom-8" style={{ animationDelay: `${idx * 100}ms` }}>
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium text-lg">{option.label}</span>
+                                    <div className="w-6 h-6 rounded-full border-2 border-gray-200 group-hover:border-black flex items-center justify-center">
+                                        <div className="w-3 h-3 bg-black rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    </div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const AIProcessing = ({ onFinish }) => {
+            const [messageIndex, setMessageIndex] = useState(0);
+            const MESSAGES = [
+                "Analyzing your vibe...",
+                "Scanning latest runway trends...",
+                "Consulting color theory algorithms...",
+                "Cross-referencing with influencer database...",
+                "Finalizing your curated look..."
+            ];
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setMessageIndex(prev => {
+                        if (prev === MESSAGES.length - 1) {
+                            clearInterval(interval);
+                            setTimeout(onFinish, 1000);
+                            return prev;
+                        }
+                        return prev + 1;
+                    });
+                }, 800);
+                return () => clearInterval(interval);
+            }, [onFinish]);
+
+            return (
+                <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 text-center">
+                    <div className="relative w-24 h-24 mb-8">
+                        <div className="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-t-purple-600 border-r-transparent border-b-pink-600 border-l-transparent rounded-full animate-spin"></div>
+                        <Icon name="sparkles" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-400 animate-pulse" size={32} />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-2 font-serif h-10 transition-all duration-300">{MESSAGES[messageIndex]}</h3>
+                    <p className="text-gray-400 text-sm uppercase tracking-widest">Please wait while we calculate your style DNA</p>
+                </div>
+            );
+        };
+
+        // --- THE "SMART" RECOMMENDATION ENGINE ---
+        const Results = ({ answers, onRestart }) => {
+            
+            // This useMemo runs the recommendation logic only when answers change
+            const recommendedProducts = useMemo(() => {
+                const gender = answers[1];     // 'women', 'men', 'unisex'
+                const vibe = answers[2];       // 'minimalist', 'streetwear', 'formal', 'boho'
+                const color = answers[3];      // 'neutral', 'vibrant', 'dark', 'pastel'
+                const occasion = answers[4];   // 'daily', 'party', 'work', 'vacation'
+
+                return PRODUCT_DATABASE
+                    .map(product => {
+                        let score = 0;
+
+                        // 1. GENDER FILTER (Strict)
+                        // If product is unisex, it's always okay.
+                        // If product is specific gender, it MUST match the user.
+                        if (product.category !== 'unisex' && product.category !== gender && gender !== 'unisex') {
+                            return { ...product, score: -100 }; // Disqualify
+                        }
+
+                        // 2. VIBE MATCH (High Weight: +10)
+                        if (product.vibe === vibe) score += 10;
+
+                        // 3. OCCASION MATCH (Medium Weight: +5)
+                        if (product.occasion === occasion) score += 5;
+
+                        // 4. COLOR MATCH (Low Weight: +3)
+                        if (product.colorType === color) score += 3;
+
+                        return { ...product, score };
+                    })
+                    .filter(p => p.score > -10) // Remove disqualified items
+                    .sort((a, b) => b.score - a.score) // Sort highest score first
+                    .slice(0, 6); // Take top 6
+            }, [answers]);
+
+            return (
+                <div className="min-h-screen pb-20">
+                    <div className="bg-black text-white py-16 px-4 text-center mb-12">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-semibold uppercase tracking-wider mb-6">
+                            <Icon name="check" size={14} className="text-green-400" />
+                            <span>Analysis Complete</span>
+                        </div>
+                        <h2 className="text-4xl md:text-6xl font-bold font-serif mb-4">Your Curated Edit</h2>
+                        <p className="text-gray-400 max-w-xl mx-auto text-lg">
+                            Based on your preference for <span className="text-white font-semibold">{answers[2]}</span> styles and <span className="text-white font-semibold">{answers[3]}</span> tones.
+                        </p>
+                    </div>
+                    <div className="max-w-6xl mx-auto px-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {recommendedProducts.length > 0 ? recommendedProducts.map((product, idx) => (
+                                <div key={product.id} className="group cursor-pointer animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-backwards" style={{ animationDelay: `${idx * 150}ms` }}>
+                                    <div className="relative aspect-[3/4] mb-4 overflow-hidden rounded-xl bg-gray-100">
+                                        <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/>
+                                        <div className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                                            <Icon name="heart" size={20} className="text-gray-900" />
+                                        </div>
+                                        <div className="absolute bottom-4 left-4 bg-black/70 text-white text-xs font-bold px-2 py-1 rounded backdrop-blur-md">
+                                            {/* Dynamic Match Percentage based on score */}
+                                            {Math.min(99, 70 + (product.score * 2))}% Match
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-bold text-lg mb-1">{product.name}</h3>
+                                            <p className="text-gray-500 text-sm capitalize">{product.vibe} • {product.category}</p>
+                                        </div>
+                                        <span className="font-semibold text-lg">{product.price}</span>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="col-span-3 text-center py-20">
+                                    <h3 className="text-xl font-bold">No perfect matches found.</h3>
+                                    <p>Try broadening your style preferences!</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="mt-20 p-8 bg-gray-50 rounded-2xl text-center">
+                            <h3 className="text-xl font-bold mb-4">Not quite right?</h3>
+                            <p className="text-gray-500 mb-8">Our AI learns from feedback. Retake the quiz to refine your profile.</p>
+                            <button onClick={onRestart} className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-full font-semibold hover:bg-gray-50 transition-colors">
+                                <Icon name="refresh-ccw" size={18} /> Retake Style Quiz
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GlamShopAI = () => {
+            const [view, setView] = useState('home');
+            const [answers, setAnswers] = useState(null);
+            const startQuiz = () => setView('quiz');
+            const completeQuiz = (userAnswers) => { setAnswers(userAnswers); setView('processing'); };
+            const showResults = () => setView('results');
+            const restart = () => { setAnswers(null); setView('home'); };
+
+            return (
+                <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-purple-100">
+                    <Header onRestart={restart} />
+                    <main>
+                        {view === 'home' && <Hero onStart={startQuiz} />}
+                        {view === 'quiz' && <Quiz onComplete={completeQuiz} />}
+                        {view === 'processing' && <AIProcessing onFinish={showResults} />}
+                        {view === 'results' && <Results answers={answers} onRestart={restart} />}
+                    </main>
+                    <footer className="border-t border-gray-100 py-8 text-center text-sm text-gray-400 mt-auto">
+                        <div className="flex items-center justify-center gap-6 mb-4">
+                            <Icon name="instagram" size={20} className="text-gray-400 hover:text-black cursor-pointer" />
+                            <Icon name="twitter" size={20} className="text-gray-400 hover:text-black cursor-pointer" />
+                        </div>
+                        <p>© 2024 GlamShop.ai. "Artificial" Intelligence. Real Style.</p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<GlamShopAI />);
+    </script>
+</body>
+</html>
